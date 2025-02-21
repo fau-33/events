@@ -3,7 +3,10 @@ package com.flaviodev.events.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.flaviodev.events.dto.SubscriptionConflictException;
+import com.flaviodev.events.dto.SubscriptionResponse;
 import com.flaviodev.events.exception.EventNotFoundException;
+import com.flaviodev.events.exception.UserIndicadorNotFoundException;
 import com.flaviodev.events.model.Event;
 import com.flaviodev.events.model.Subscription;
 import com.flaviodev.events.model.User;
@@ -23,23 +26,34 @@ public class SubscriptionService {
   @Autowired
   private SubscriptionRepo subRepo;
   
-  public Subscription createNewSubscription(String eventName, User user){
+  public SubscriptionResponse createNewSubscription(String eventName, User user, Integer userId){
     // busca o evento pelo nome
     Event evt = evtRepo.findByPrettyName(eventName);
-    if(evt == null){
+    if(evt == null){ // Caso alternativo 2
       throw new EventNotFoundException("Evento " + eventName + " não existe");
     }
     User userRec = userRepo.findByEmail(user.getEmail());
-    if(userRec == null){
+    if(userRec == null){ // Caso alternativo 1
       userRec = userRepo.save(user);
+    }
+
+    User indicador = userRepo.findById(userId).orElse(null);
+    if(indicador == null){
+      throw new UserIndicadorNotFoundException("Usuário " + userId + " indicador não existe");
     }
 
     Subscription subs = new Subscription();
     subs.setEvent(evt);
     subs.setSubscriber(userRec);
+    subs.setIndication(indicador);
+
+    Subscription tmpSub = subRepo.findByEventAndSubscriber(evt, userRec);
+    if(tmpSub != null){ // Caso alternativo 3
+      throw new SubscriptionConflictException("Já existe inscrição para o usuário " + userRec.getName() + " no evento " + evt.getTitle());
+    }
 
     Subscription res = subRepo.save(subs);
 
-    return res;
+    return new SubscriptionResponse(res.getSubscriptionNumber(), "http://codecraft.com/subscription/" + res.getEvent().getPrettyName()+ "/" + res.getSubscriber().getId());
   }
 }

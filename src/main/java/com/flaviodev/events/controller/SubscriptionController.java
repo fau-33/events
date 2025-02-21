@@ -1,7 +1,5 @@
 package com.flaviodev.events.controller;
 
-import java.util.logging.ErrorManager;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,8 +8,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.flaviodev.events.dto.ErrorMessage;
+import com.flaviodev.events.dto.SubscriptionConflictException;
+import com.flaviodev.events.dto.SubscriptionResponse;
 import com.flaviodev.events.exception.EventNotFoundException;
-import com.flaviodev.events.model.Subscription;
+import com.flaviodev.events.exception.UserIndicadorNotFoundException;
 import com.flaviodev.events.model.User;
 import com.flaviodev.events.service.SubscriptionService;
 
@@ -23,16 +23,20 @@ public class SubscriptionController {
   @Autowired
   private SubscriptionService service;
 
-  @PostMapping("/subscription/{prettyName}")
-  public ResponseEntity<?> createSubscription(@PathVariable String prettyName, @RequestBody User subscriber){
+  @PostMapping({"/subscription/{prettyName}", "/subscription/{prettyName}/{userId}"})
+  public ResponseEntity<?> createSubscription(@PathVariable String prettyName, @RequestBody User subscriber, @PathVariable(required = false) Integer userId){
     try{
-    Subscription res = service.createNewSubscription(prettyName, subscriber);
+    SubscriptionResponse res = service.createNewSubscription(prettyName, subscriber, userId);
     if(res != null){
       return ResponseEntity.ok(res);
     }
     
   }catch(EventNotFoundException ex){
     return ResponseEntity.status(404).body( new ErrorMessage(ex.getMessage()));
+  }catch(SubscriptionConflictException ex){
+    return ResponseEntity.status(409).body(new ErrorMessage(ex.getMessage()));
+  }catch(UserIndicadorNotFoundException ex ){
+    return ResponseEntity.status(404).body(new ErrorMessage(ex.getMessage()));
   }
   return ResponseEntity.badRequest().build();
 }}
