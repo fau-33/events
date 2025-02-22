@@ -1,11 +1,13 @@
 package com.flaviodev.events.service;
 
 import java.util.List;
+import java.util.stream.IntStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.flaviodev.events.dto.SubscriptionConflictException;
+import com.flaviodev.events.dto.SubscriptionRankingByUser;
 import com.flaviodev.events.dto.SubscriptionRankingItem;
 import com.flaviodev.events.dto.SubscriptionResponse;
 import com.flaviodev.events.exception.EventNotFoundException;
@@ -69,5 +71,18 @@ public class SubscriptionService {
     }
     return subRepo.generateRanking(evt.getEventId());
 
+  }
+
+  public SubscriptionRankingByUser getRankingByUser(String prettyName, Integer userId){
+    List<SubscriptionRankingItem> ranking = getCompleteRanking(prettyName);
+    SubscriptionRankingItem  item = ranking.stream().filter(i -> i.userId().equals(userId)).findFirst().orElse(null);
+
+    if(item == null){
+      throw new UserIndicadorNotFoundException("Não há inscrições com indicação do usuário "+ userId);
+    }
+    Integer posicao = IntStream.range(0, ranking.size())
+    .filter(pos -> ranking.get(pos).userId().equals(userId))
+    .findFirst().getAsInt();
+    return new SubscriptionRankingByUser(item, posicao+1);
   }
 }
